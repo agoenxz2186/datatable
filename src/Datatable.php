@@ -1,11 +1,11 @@
 <?php
 
-namespace Agoenxz21\Datatable;
+namespace Agoenxz21\Datatables;
 
 use \Config\Services;
 use \Config\Database;
 
-class Datatables
+class Datatable
 {
 	private $builder;
 	private $request;
