@@ -1,1 +1,1 @@
-Library untuk menyajikand ata datatable ke jquery datatable
+Library untuk menyajikan data datatable ke jquery datatable
