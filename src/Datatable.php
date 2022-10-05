@@ -2,12 +2,17 @@
 
 namespace Agoenxz21\Datatables;
 
+use CodeIgniter\Database\MySQLi\Builder;
 use \Config\Services;
 use \Config\Database;
 
 class Datatable
 {
+	/**
+	 * @var Builder
+	 */
 	private $builder;
+
 	private $request;
 	private $alias = [];
 	private $whereFields = [];
@@ -44,7 +49,7 @@ class Datatable
 	public function select(String $fields)
 	{
 		$this->builder->select($fields);
-		$this->setAlias($fields);
+		$this->setFieldFilter($fields);
 		return $this;
 	}
 
@@ -57,7 +62,7 @@ class Datatable
 		}
 		$this->whereData = $data;
 		return $this;
-	}
+	} 
 
 	public function join($table, $cond, $type = '')
 	{
@@ -107,15 +112,23 @@ class Datatable
 	}
 
 
-	private function setAlias($data)
+	public function setFieldFilter($data)
 	{
-		foreach (explode(',', $data) as $val) {
+		if(is_array($data) == false){
+			$data = explode(',', $data);
+		}
+
+		foreach ($data as $val) {
 			if (stripos($val, 'as')) {
 				$alias = trim(preg_replace('/(.*)\s+as\s+(\w*)/i', '$2', $val));
 				$field = trim(preg_replace('/(.*)\s+as\s+(\w*)/i', '$1', $val));
 				$this->alias[$alias] = $field;
+			}else{
+				$val = trim($val);
+				$this->alias[$val] = $val;
 			}
 		}
+		return $this;
 	}
 
 	private function doJoin()
@@ -132,27 +145,33 @@ class Datatable
 		if(count($fields) == 0){
 			return;
 		}
-
-		$this->builder->groupStart();
-		for ($i = 0; $i < count($fields); $i++) {
-			$where = false;
-			$field = $fields[$i]['data'];
-
-			foreach ($this->whereFields as $data) {
-				$where = ($field == $data) ? true : false;
-			}
-			$searchable = $fields[$i]['searchable'] == 'true' ? true : false;
-			if ($searchable) {
-				if ($where) continue;
-				if (array_key_exists($field, $this->alias)) {
-					$field = $this->alias[$field];
-					($i < 1) ? $this->builder->like($field, $keyword) : $this->builder->orLike($field, $keyword);
-				} else {
-					($i < 1) ? $this->builder->like($field, $keyword) : $this->builder->orLike($field, $keyword);
-				}
+		$kw = [];
+		foreach(explode(' ', $keyword) as $k){
+			$k = trim($k);
+			if($k != ''){
+				$kw[] = $k;
 			}
 		}
-		$this->builder->groupEnd();
+
+		foreach($kw as $k){
+			$this->builder->groupStart();  
+			for ($i = 0; $i < count($fields); $i++) {
+				$field = $fields[$i]['data']; 
+				
+				$searchable = $fields[$i]['searchable'] == 'true' ? true : false;
+				if ($searchable) {
+					if (array_key_exists($field, $this->alias)) {
+						$field = $this->alias[$field];
+					
+						($i < 1) ? $this->builder->like($field, $k) : $this->builder->orLike($field, $k);
+					} else {
+						($i < 1) ? $this->builder->like($field, $k) : $this->builder->orLike($field, $k);
+					}
+				}
+			}
+			$this->builder->groupEnd(); 
+		}
+	
 	}
 
 	private function getOrdering()
@@ -168,6 +187,7 @@ class Datatable
 	{
 		$this->getLimiting();
 		$data = $this->builder->get()->getResultArray();
+	
 		$this->columns = $data;
 		$i = $this->request->getVar('start', FILTER_SANITIZE_NUMBER_INT);
 		$aaData = array();
